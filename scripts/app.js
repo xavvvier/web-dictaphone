@@ -9,6 +9,7 @@ const mainSection = document.querySelector('.main-controls');
 // disable stop button while not recording
 
 stop.disabled = true;
+stop.classList.toggle('hidden');
 
 // visualiser setup - create web audio api context and canvas
 
@@ -26,7 +27,7 @@ if (navigator.mediaDevices.getUserMedia) {
   let onSuccess = function(stream) {
     const mediaRecorder = new MediaRecorder(stream);
 
-    visualize(stream);
+    visualizeOscilloscope(stream);
 
     record.onclick = function() {
       mediaRecorder.start();
@@ -36,6 +37,8 @@ if (navigator.mediaDevices.getUserMedia) {
 
       stop.disabled = false;
       record.disabled = true;
+      stop.classList.toggle('hidden');
+      record.classList.toggle('hidden');
     }
 
     stop.onclick = function() {
@@ -48,35 +51,34 @@ if (navigator.mediaDevices.getUserMedia) {
 
       stop.disabled = true;
       record.disabled = false;
+      stop.classList.toggle('hidden');
+      record.classList.toggle('hidden');
     }
 
     mediaRecorder.onstop = function(e) {
       console.log("data available after MediaRecorder.stop() called.");
 
-      const clipName = prompt('Enter a name for your sound clip?','My unnamed clip');
+      const clipName = new Date().toLocaleTimeString();
 
       const clipContainer = document.createElement('article');
       const clipLabel = document.createElement('p');
       const audio = document.createElement('audio');
       const deleteButton = document.createElement('button');
 
-      clipContainer.classList.add('clip');
+      clipContainer.classList.add('clip', 'new-clip');
       audio.setAttribute('controls', '');
       deleteButton.textContent = 'Delete';
       deleteButton.className = 'delete';
 
-      if(clipName === null) {
-        clipLabel.textContent = 'My unnamed clip';
-      } else {
-        clipLabel.textContent = clipName;
-      }
+      clipLabel.textContent = clipName;
 
       clipContainer.appendChild(audio);
       clipContainer.appendChild(clipLabel);
       clipContainer.appendChild(deleteButton);
-      soundClips.appendChild(clipContainer);
+      soundClips.prepend(clipContainer);
 
       audio.controls = true;
+      audio.autoplay = true;
       const blob = new Blob(chunks, { 'type' : 'audio/ogg; codecs=opus' });
       chunks = [];
       const audioURL = window.URL.createObjectURL(blob);
@@ -114,8 +116,8 @@ if (navigator.mediaDevices.getUserMedia) {
    console.log('getUserMedia not supported on your browser!');
 }
 
-function visualize(stream) {
-  if(!audioCtx) {
+function visualizeOscilloscope(stream) {
+  if (!audioCtx) {
     audioCtx = new AudioContext();
   }
 
@@ -129,10 +131,10 @@ function visualize(stream) {
   source.connect(analyser);
   //analyser.connect(audioCtx.destination);
 
-  draw()
+  draw();
 
   function draw() {
-    const WIDTH = canvas.width
+    const WIDTH = canvas.width;
     const HEIGHT = canvas.height;
 
     requestAnimationFrame(draw);
@@ -147,16 +149,14 @@ function visualize(stream) {
 
     canvasCtx.beginPath();
 
-    let sliceWidth = WIDTH * 1.0 / bufferLength;
+    let sliceWidth = (WIDTH * 1.0) / bufferLength;
     let x = 0;
 
-
-    for(let i = 0; i < bufferLength; i++) {
-
+    for (let i = 0; i < bufferLength; i++) {
       let v = dataArray[i] / 128.0;
-      let y = v * HEIGHT/2;
+      let y = (v * HEIGHT) / 2;
 
-      if(i === 0) {
+      if (i === 0) {
         canvasCtx.moveTo(x, y);
       } else {
         canvasCtx.lineTo(x, y);
@@ -165,9 +165,8 @@ function visualize(stream) {
       x += sliceWidth;
     }
 
-    canvasCtx.lineTo(canvas.width, canvas.height/2);
+    canvasCtx.lineTo(canvas.width, canvas.height / 2);
     canvasCtx.stroke();
-
   }
 }
 
